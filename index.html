@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jeu Pierre, Papier, Ciseaux Adolphine VS DEV</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#5D5CDE'
+                    }
+                }
+            }
+        }
+
+        // Support du mode sombre
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+            if (event.matches) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        });
+    </script>
+    <style>
+        .player-choice {
+            transition: all 0.3s ease;
+        }
+        .player-choice:hover {
+            transform: scale(1.05);
+        }
+        .player-choice:active {
+            transform: scale(0.95);
+        }
+        .choice-icon {
+            font-size: 1.5rem;
+            margin-right: 0.5rem;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <h1 class="text-3xl md:text-4xl font-bold text-center mb-8 text-primary">Jeu Pierre, Papier, Ciseaux</h1>
+        <h2 class="text-2xl font-semibold text-center mb-6">Adolphine VS DEV</h2>
+        
+        <!-- Sélection du mode de jeu -->
+        <div id="mode-selection" class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-semibold mb-4 text-primary text-center">Choisissez votre mode de jeu</h2>
+            <div class="flex flex-wrap justify-center gap-4">
+                <button onclick="selectMode('same-device')" class="player-choice bg-primary hover:bg-primary/80 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center">
+                    <i class="fas fa-mobile-alt choice-icon"></i> Même appareil
+                </button>
+                <button onclick="showPlayerSelection()" class="player-choice bg-primary hover:bg-primary/80 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center">
+                    <i class="fas fa-wifi choice-icon"></i> Deux appareils différents
+                </button>
+            </div>
+        </div>
+
+        <!-- Sélection du joueur (pour le mode deux appareils) -->
+        <div id="player-selection" class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-8 hidden">
+            <h2 class="text-2xl font-semibold mb-4 text-primary text-center">Choisissez votre joueur</h2>
+            <div class="flex flex-wrap justify-center gap-4">
+                <button onclick="selectPlayer(1)" class="player-choice bg-primary hover:bg-primary/80 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center">
+                    <i class="fas fa-user choice-icon"></i> Je suis Joueur 1
+                </button>
+                <button onclick="selectPlayer(2)" class="player-choice bg-primary hover:bg-primary/80 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center">
+                    <i class="fas fa-user-friends choice-icon"></i> Je suis Joueur 2
+                </button>
+            </div>
+        </div>
+
+        <!-- Affichage du lien à partager -->
+        <div id="share-link-container" class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-8 hidden">
+            <h2 class="text-2xl font-semibold mb-4 text-primary text-center">Partagez ce lien avec l'autre joueur</h2>
+            <div class="flex items-center justify-center mb-4">
+                <input id="share-link" type="text" class="w-full p-2 border rounded-l-lg text-base dark:bg-gray-700 dark:border-gray-600" readonly>
+                <button onclick="copyLink()" class="bg-primary hover:bg-primary/80 text-white font-medium py-2 px-4 rounded-r-lg transition-colors">
+                    <i class="fas fa-copy"></i>
+                </button>
+            </div>
+            <p class="text-center text-sm">Envoyez ce lien à l'autre joueur pour commencer la partie</p>
+        </div>
+
+        <!-- Message d'attente (pour le mode deux appareils) -->
+        <div id="waiting-message" class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-8 hidden">
+            <h2 class="text-2xl font-semibold mb-4 text-primary text-center">En attente du choix de l'autre joueur...</h2>
+            <div class="flex justify-center">
+                <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+            </div>
+            <p class="text-center mt-4">Après avoir fait votre choix, attendez que l'autre joueur fasse le sien</p>
+            <button id="check-opponent-choice" onclick="checkOpponentChoice()" class="mt-6 mx-auto block bg-primary hover:bg-primary/80 text-white font-medium py-3 px-6 rounded-lg transition-colors">
+                Vérifier le choix de l'adversaire
+            </button>
+        </div>
+
+        <!-- Interface de jeu -->
+        <div id="game-interface" class="hidden">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8" id="same-device-interface">
+                <!-- Joueur 1 -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+                    <h2 class="text-2xl font-semibold mb-4 text-primary">Joueur 1</h2>
+                    <div id="player1-status" class="mb-4 min-h-6 text-lg">En attente de choix...</div>
+                    <div class="flex flex-wrap justify-center gap-4" id="player1-choices">
+                        <button onclick="playerChoice(1, 'pierre')" class="player-choice bg-primary hover:bg-primary/80 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center">
+                            <i class="fas fa-hand-rock choice-icon"></i> Pierre
+                        </button>
+                        <button onclick="playerChoice(1, 'papier')" class="player-choice bg-primary hover:bg-primary/80 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center">
+                            <i class="fas fa-hand-paper choice-icon"></i> Papier
+                        </button>
+                        <button onclick="playerChoice(1, 'ciseaux')" class="player-choice bg-primary hover:bg-primary/80 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center">
+                            <i class="fas fa-hand-scissors choice-icon"></i> Ciseaux
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Joueur 2 -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+                    <h2 class="text-2xl font-semibold mb-4 text-primary">Joueur 2</h2>
+                    <div id="player2-status" class="mb-4 min-h-6 text-lg">En attente de choix...</div>
+                    <div class="flex flex-wrap justify-center gap-4" id="player2-choices">
+                        <button onclick="playerChoice(2, 'pierre')" class="player-choice bg-primary hover:bg-primary/80 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center">
+                            <i class="fas fa-hand-rock choice-icon"></i> Pierre
+                        </button>
+                        <button onclick="playerChoice(2, 'papier')" class="player-choice bg-primary hover:bg-primary/80 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center">
+                            <i class="fas fa-hand-paper choice-icon"></i> Papier
+                        </button>
+                        <button onclick="playerChoice(2, 'ciseaux')" class="player-choice bg-primary hover:bg-primary/80 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center">
+                            <i class="fas fa-hand-scissors choice-icon"></i> Ciseaux
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interface pour un seul joueur (mode deux appareils) -->
+            <div id="single-player-interface" class="hidden">
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+                    <h2 id="current-player-title" class="text-2xl font-semibold mb-4 text-primary"></h2>
+                    <div id="current-player-status" class="mb-4 min-h-6 text-lg">En attente de choix...</div>
+                    <div class="flex flex-wrap justify-center gap-4">
+                        <button onclick="singlePlayerChoice('pierre')" class="player-choice bg-primary hover:bg-primary/80 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center">
+                            <i class="fas fa-hand-rock choice-icon"></i> Pierre
+                        </button>
+                        <button onclick="singlePlayerChoice('papier')" class="player-choice bg-primary hover:bg-primary/80 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center">
+                            <i class="fas fa-hand-paper choice-icon"></i> Papier
+                        </button>
+                        <button onclick="singlePlayerChoice('ciseaux')" class="player-choice bg-primary hover:bg-primary/80 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center">
+                            <i class="fas fa-hand-scissors choice-icon"></i> Ciseaux
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Authentification et connexion -->
+        <div id="login-container" class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-semibold mb-4 text-primary text-center">Créer un compte</h2>
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label for="username" class="block text-sm">Nom d'utilisateur</label>
+                    <input id="username" type="text" class="w-full p-2 border rounded-md" required>
+                </div>
+                <div>
+                    <label for="code" class="block text-sm">Code secret</label>
+                    <input id="code" type="text" class="w-full p-2 border rounded-md" required>
+                </div>
+                <button type="submit" class="bg-primary text-white py-3 px-6 rounded-md w-full">Se connecter</button>
+            </form>
+        </div>
+        
+    </div>
+    
+    <script>
+        // Fonctionnalités JavaScript
+
+        // Affiche la page de sélection du mode de jeu
+        function showPlayerSelection() {
+            document.getElementById('mode-selection').classList.add('hidden');
+            document.getElementById('player-selection').classList.remove('hidden');
+        }
+
+        // Sélection du mode de jeu sur le même appareil
+        function selectMode(mode) {
+            document.getElementById('mode-selection').classList.add('hidden');
+            if (mode === 'same-device') {
+                document.getElementById('game-interface').classList.remove('hidden');
+                document.getElementById('same-device-interface').classList.remove('hidden');
+            }
+        }
+
+        // Sélection du joueur
+        function selectPlayer(player) {
+            localStorage.setItem('player', player);
+            const gameId = Math.random().toString(36).substring(2, 10);
+            localStorage.setItem('gameId', gameId);
+            const shareLink = window.location.href.split('?')[0] + `?gameId=${gameId}&player=${player}`;
+            document.getElementById('share-link').value = shareLink;
+            document.getElementById('player-selection').classList.add('hidden');
+            document.getElementById('share-link-container').classList.remove('hidden');
+        }
+
+        // Copier le lien de la partie
+        function copyLink() {
+            const link = document.getElementById('share-link');
+            link.select();
+            document.execCommand('copy');
+            alert('Lien copié !');
+        }
+
+        // Fonction de choix des joueurs
+        function playerChoice(player, choice) {
+            if (player === 1) {
+                document.getElementById('player1-status').textContent = `Joueur 1 a choisi ${choice}`;
+            } else if (player === 2) {
+                document.getElementById('player2-status').textContent = `Joueur 2 a choisi ${choice}`;
+            }
+        }
+
+        // Vérifier le choix de l'adversaire
+        function checkOpponentChoice() {
+            // À compléter en fonction de la logique du jeu à distance
+            alert('Le choix de l\'opposant doit encore être récupéré.');
+        }
+
+        // Choix pour un seul joueur
+        function singlePlayerChoice(choice) {
+            document.getElementById('current-player-status').textContent = `Vous avez choisi ${choice}`;
+        }
+
+        // Gérer la soumission du formulaire de connexion
+        document.getElementById('login-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const username = document.getElementById('username').value;
+            const code = document.getElementById('code').value;
+            if (username && code) {
+                localStorage.setItem('username', username);
+                localStorage.setItem('code', code);
+                document.getElementById('login-container').classList.add('hidden');
+                document.getElementById('mode-selection').classList.remove('hidden');
+            } else {
+                alert('Veuillez entrer un nom et un code.');
+            }
+        });
+    </script>
+</body>
+</html>
